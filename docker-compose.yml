@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  internet-monitor:
+    build: .
+    container_name: internet-monitor
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the database file so your speedtest history persists across container restarts
+      - ./backend/results.db:/app/backend/results.db
+    restart: unless-stopped

@@ -1,20 +1,142 @@
-<canvas id="downloadChart"></canvas>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-fetch('/results')
-.then(r => r.json())
-.then(data => {
-    const labels = data.map(d => d.timestamp);
-    const downloads = data.map(d => d.download);
-
-    new Chart(document.getElementById('downloadChart'), {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{ label: 'Download Mbps', data: downloads }]
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://api.fontshare.com https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://api.fontshare.com https://fonts.gstatic.com; connect-src 'self'">
+    <title>Internet Monitor</title>
+    
+    <!-- Premium Typography: Satoshi for UI, JetBrains Mono for Data -->
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Satoshi', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        canvas: '#F9FAFB',
+                        surface: '#FFFFFF',
+                        ink: '#18181B',
+                        steel: '#71717A',
+                        whisper: 'rgba(226,232,240,0.5)',
+                        accent: '#2563EB',
+                        emerald: '#10B981',
+                        
+                        'dark-canvas': '#09090B',
+                        'dark-surface': '#18181B',
+                        'dark-ink': '#FAFAFA',
+                        'dark-steel': '#A1A1AA',
+                        'dark-whisper': 'rgba(63,63,70,0.5)',
+                    }
+                }
+            }
         }
-    });
-});
-</script>
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .tactile-btn {
+                @apply transition-all duration-200 active:-translate-y-[1px];
+            }
+        }
+        body {
+            @apply bg-canvas text-ink dark:bg-dark-canvas dark:text-dark-ink overflow-hidden;
+        }
+        
+        /* Spinner Animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="min-h-[100dvh] max-h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 md:p-8 box-border">
+    
+    <!-- 100dvh Container -->
+    <div class="w-full max-w-[1400px] h-full flex flex-col md:flex-row gap-6 md:gap-8 mx-auto overflow-hidden">
+        
+        <!-- Left Column: Hero & KPIs (35% width on desktop) -->
+        <div class="w-full md:w-[35%] flex flex-col gap-6 shrink-0 justify-start overflow-y-auto md:overflow-visible pr-1 md:pr-0">
+            
+            <!-- Hero Section (Asymmetric) -->
+            <header class="flex flex-col gap-4 items-start pt-2">
+                <h1 class="text-[2.5rem] md:text-[3.5rem] font-black tracking-tighter leading-[1.1] text-ink dark:text-dark-ink">
+                    Network<br/>Telemetry
+                </h1>
+                <p class="text-steel dark:text-dark-steel text-[1rem] max-w-[28ch] leading-relaxed">
+                    Local performance metrics. Data-dense analytics over time.
+                </p>
+                <button id="runSpeedtestBtn" class="tactile-btn mt-2 inline-flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-blue-700 disabled:opacity-50">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l-5.94 5.94"/></svg>
+                    Run Speedtest
+                </button>
+                <div class="status-message text-xs font-mono text-accent mt-1 h-4" id="statusMessage"></div>
+            </header>
+
+            <!-- KPIs 2x2 Bento Grid -->
+            <section class="grid grid-cols-2 gap-4 w-full">
+                <!-- Download -->
+                <div class="bg-surface dark:bg-dark-surface border border-whisper dark:border-dark-whisper rounded-[1.5rem] p-4 flex flex-col gap-1">
+                    <h3 class="text-xs uppercase tracking-widest text-steel dark:text-dark-steel font-bold">Download</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="kpi-download" class="font-mono text-2xl md:text-3xl font-bold text-accent">--</span>
+                        <span class="text-xs text-steel font-medium">Mbps</span>
+                    </div>
+                </div>
+                <!-- Upload -->
+                <div class="bg-surface dark:bg-dark-surface border border-whisper dark:border-dark-whisper rounded-[1.5rem] p-4 flex flex-col gap-1">
+                    <h3 class="text-xs uppercase tracking-widest text-steel dark:text-dark-steel font-bold">Upload</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="kpi-upload" class="font-mono text-2xl md:text-3xl font-bold text-emerald-500">--</span>
+                        <span class="text-xs text-steel font-medium">Mbps</span>
+                    </div>
+                </div>
+                <!-- Ping -->
+                <div class="bg-surface dark:bg-dark-surface border border-whisper dark:border-dark-whisper rounded-[1.5rem] p-4 flex flex-col gap-1">
+                    <h3 class="text-xs uppercase tracking-widest text-steel dark:text-dark-steel font-bold">Ping</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="kpi-ping" class="font-mono text-2xl md:text-3xl font-bold text-ink dark:text-dark-ink">--</span>
+                        <span class="text-xs text-steel font-medium">ms</span>
+                    </div>
+                </div>
+                <!-- Jitter -->
+                <div class="bg-surface dark:bg-dark-surface border border-whisper dark:border-dark-whisper rounded-[1.5rem] p-4 flex flex-col gap-1">
+                    <h3 class="text-xs uppercase tracking-widest text-steel dark:text-dark-steel font-bold">Jitter</h3>
+                    <div class="flex items-baseline gap-1">
+                        <span id="kpi-jitter" class="font-mono text-2xl md:text-3xl font-bold text-ink dark:text-dark-ink">--</span>
+                        <span class="text-xs text-steel font-medium">ms</span>
+                    </div>
+                </div>
+            </section>
+            
+            <div class="hidden md:block mt-auto text-xs text-steel dark:text-dark-steel pb-2">
+                Self-Hosted Monitor &bull; Cron 11:00 / 23:00
+            </div>
+        </div>
+
+        <!-- Right Column: Chart (65% width on desktop) -->
+        <!-- flex-1 ensures it takes remaining space on both mobile flex-col and desktop flex-row -->
+        <div class="flex-1 w-full flex flex-col min-h-0 bg-surface dark:bg-dark-surface border border-whisper dark:border-dark-whisper rounded-[2rem] p-4 md:p-8 overflow-hidden shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] dark:shadow-none">
+            <h3 class="text-sm font-bold text-ink dark:text-dark-ink mb-4 shrink-0">Bandwidth History</h3>
+            <div class="relative w-full h-full min-h-0">
+                <canvas id="downloadChart"></canvas>
+            </div>
+        </div>
+        
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>

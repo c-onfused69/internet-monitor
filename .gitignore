@@ -1,0 +1,16 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+backend/results.db
+
+# Agent Storage
+.agents/
+.gemini/
+
+# OS generated files
+.DS_Store
+Thumbs.db

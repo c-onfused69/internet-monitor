@@ -8,6 +8,10 @@
 
 > **A self-hosted, universal Internet Quality Monitoring Web App that randomly tests and tracks your connection speed over time.**
 
+<p align="center">
+  <img src="demo.png" alt="Internet Quality Monitor Dashboard Demo" width="100%">
+</p>
+
 ## ✨ Key Features
 - **Data-Dense Analytics**: Track Download, Upload, Ping, and Jitter on a beautiful, responsive, one-page dashboard.
 - **Randomized Automation**: Automatically tests your internet speed at two completely random times every day (one AM, one PM) using the official Ookla CLI to prevent predictable ISP throttling.
